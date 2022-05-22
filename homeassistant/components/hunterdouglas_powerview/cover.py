@@ -120,13 +120,19 @@ def create_powerview_shade_entity(
     # order here is important as both ShadeTDBU are listed in aiovapi as can_tilt
     # and both require their own class here to work
     shade_type = shade.shade_type.shade_type
-    if isinstance(shade, ShadeTdbu):
+    if isinstance(shade, ShadeTdbu) or shade_type in [9]:
         classes.extend([PowerViewShadeTDBUTop, PowerViewShadeTDBUBottom])
-    elif isinstance(shade, Silhouette):
+    elif isinstance(shade, Silhouette) or shade_type in [18, 43]:
         classes.append(PowerViewShadeSilhouette)
-    elif isinstance(shade, ShadeBottomUpTilt):
+    elif isinstance(shade, ShadeBottomUpTilt) or shade_type in [70, 71, 55, 56]:
         classes.append(PowerViewShadeTiltOnClosed)
-    elif shade.can_tilt:
+    elif shade_type in [69, 54]:  # or isinstance(shade, ShadeVerticalTiltInvert):
+        classes.append(PowerViewShadeTiltOnClosedInvert)
+    elif shade_type in [70, 71, 55, 56]:  # isinstance(shade, ShadeTiltOnly)
+        classes.append(PowerViewShadeTiltOnly)
+    elif shade_type in [7]:  # or isinstance(shade, ShadeTiltOnly):
+        classes.append(PowerViewShadeTopDown)
+    elif shade.can_tilt or shade_type in [51]:
         classes.append(PowerViewShadeTiltAnywhere)
     else:
         classes.append(PowerViewShade)
@@ -716,6 +722,46 @@ class PowerViewShadeSilhouette(PowerViewShadeTiltOnClosed):
         self._tilt_steps = 5  # only 90° tilt (half of normal)
 
 
+class PowerViewShadeTiltOnClosedInvert(PowerViewShadeTiltOnClosed):
+    """Representation of a vertical shade with tilt that requires inversion of position.
+
+    API Class: ShadeVerticalTiltInvert
+    """
+
+    def __init__(self, coordinator, device_info, room_name, shade, name):
+        """Initialize the shade."""
+        super().__init__(coordinator, device_info, room_name, shade, name)
+        self.open_position_tilt = {ATTR_POSKIND1: 3, ATTR_POSITION1: MIN_POSITION}
+        self.close_position_tilt = {ATTR_POSKIND1: 3, ATTR_POSITION1: MAX_POSITION}
+
+    @property
+    def current_cover_tilt_position(self):
+        """Return the current position of cover."""
+        return hd_position_to_hass(
+            self._max_tilt - self.get_position_vane, self._max_tilt
+        )
+
+    async def async_set_cover_tilt_position(self, **kwargs):
+        """Move the vane to a specific position."""
+        if ATTR_TILT_POSITION not in kwargs:
+            return
+        await self._async_tilt(100 - kwargs[ATTR_TILT_POSITION])
+
+    # delete after aiopvapi updated
+    async def async_open_cover_tilt(self, **kwargs):
+        """Open the cover tilt."""
+        self._async_schedule_update_for_transition(100 - self.get_transition_steps)
+        self._async_update_from_command(await self._shade.move(self.open_position_tilt))
+
+    # delete after aiopvapi updated
+    async def async_close_cover_tilt(self, **kwargs):
+        """Close the cover tilt."""
+        self._async_schedule_update_for_transition(self.get_transition_steps)
+        self._async_update_from_command(
+            await self._shade.move(self.close_position_tilt)
+        )
+
+
 class PowerViewShadeTiltAnywhere(PowerViewShadeTiltBase):
     """Representation of a shade with tilt at any position.
 
@@ -747,3 +793,80 @@ class PowerViewShadeTiltAnywhere(PowerViewShadeTiltBase):
             ATTR_POSITION2: position_vane,
             ATTR_POSKIND2: POS_KIND_VANE,
         }
+
+
+class PowerViewShadeTiltOnly(PowerViewShadeTiltBase):
+    """Representation of a shade with tilt only capability, no move.
+
+    API Class: ShadeTiltOnly
+    """
+
+    def __init__(self, coordinator, device_info, room_name, shade, name):
+        """Initialize the shade."""
+        super().__init__(coordinator, device_info, room_name, shade, name)
+        # declared in init as we dont want to support stop (Legacy hubs)
+        # and these have no cover motor, only tilt
+        self._attr_supported_features = (
+            CoverEntityFeature.OPEN_TILT
+            | CoverEntityFeature.CLOSE_TILT
+            | CoverEntityFeature.STOP_TILT
+            | CoverEntityFeature.SET_TILT_POSITION
+        )
+
+    @callback
+    def _set_shade_tilt(self, target_hass_position):
+        """Return json for shade position requested."""
+        position_vane = hass_position_to_hd(target_hass_position)
+        self.set_position_vane(position_vane)
+        return {
+            ATTR_POSITION1: position_vane,
+            ATTR_POSKIND1: POS_KIND_VANE,
+        }
+
+
+class PowerViewShadeTopDown(PowerViewShadeBase):
+    """Represent a Top Down Only shade - Same as Bottom Up but values inverted.
+
+    API Class: ShadeTiltOnly
+    """
+
+    def __init__(self, coordinator, device_info, room_name, shade, name):
+        """Initialize the shade."""
+        super().__init__(coordinator, device_info, room_name, shade, name)
+        self.open_position = {ATTR_POSKIND1: 1, ATTR_POSITION1: MIN_POSITION}
+        self.close_position = {ATTR_POSKIND1: 1, ATTR_POSITION1: MAX_POSITION}
+
+    _attr_supported_features = (
+        CoverEntityFeature.OPEN
+        | CoverEntityFeature.CLOSE
+        | CoverEntityFeature.SET_POSITION
+    )
+
+    @property
+    def is_closed(self):
+        """Return if the cover is closed."""
+        # treat anything below 75% of 1% of total position as closed due to conversion of powerview to hass
+        return (MAX_POSITION - self.get_position_primary) <= CLOSED_POSITION
+
+    @property
+    def current_cover_position(self):
+        """Return the current position of cover."""
+        return hd_position_to_hass(MAX_POSITION - self.get_position_primary)
+
+    async def async_set_cover_position(self, **kwargs):
+        """Move the shade to a specific position."""
+        if ATTR_POSITION not in kwargs:
+            return
+        await self._async_move(100 - kwargs[ATTR_POSITION])
+
+    # delete once api updated
+    async def async_close_cover(self, **kwargs):
+        """Close the cover."""
+        self._async_schedule_update_for_transition(100 - self.get_transition_steps)
+        self._async_update_from_command(await self._shade.move(self.close_position))
+
+    # delete once api updated
+    async def async_open_cover(self, **kwargs):
+        """Open the cover."""
+        self._async_schedule_update_for_transition(self.get_transition_steps)
+        self._async_update_from_command(await self._shade.move(self.open_position))
