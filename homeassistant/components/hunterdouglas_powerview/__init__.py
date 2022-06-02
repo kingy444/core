@@ -89,6 +89,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             shades = Shades(pv_request)
             shade_entries = await shades.get_resources()
             shade_data = async_map_data_by_id(shade_entries[SHADE_DATA])
+
     except HUB_EXCEPTIONS as err:
         raise ConfigEntryNotReady(
             f"Connection error to PowerView hub: {hub_address}: {err}"
@@ -98,7 +99,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     coordinator = PowerviewShadeUpdateCoordinator(hass, shades, hub_address)
     coordinator.async_set_updated_data(PowerviewShadeData())
-    # populate raw shade data into toe coordinator for diagnostics
+    # populate raw shade data into the coordinator for diagnostics
     coordinator.data.store_group_data(shade_entries[SHADE_DATA])
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {
