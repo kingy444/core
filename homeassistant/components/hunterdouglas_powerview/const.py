@@ -50,6 +50,13 @@ ROOM_ID = "id"
 SHADE_BATTERY_LEVEL = "batteryStrength"
 SHADE_BATTERY_LEVEL_MAX = 200
 
+POWER_SUPPLY_PROP = "batteryKind"
+POWER_SUPPLY_TYPE = {
+    "Hardwired": 1,
+    "Battery Wand": 2,
+    "Rechargeable": 3,
+}
+
 STATE_ATTRIBUTE_ROOM_NAME = "roomName"
 
 PV_API = "pv_api"
