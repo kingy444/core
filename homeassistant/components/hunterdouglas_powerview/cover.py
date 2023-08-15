@@ -17,8 +17,7 @@ from aiopvapi.helpers.constants import (
     MIN_POSITION,
     MOTION_STOP,
 )
-from aiopvapi.resources.shade import BaseShade, ShadePosition
-import async_timeout
+from aiopvapi.resources.shade import BaseShade, factory as PvShade
 
 from homeassistant.components.cover import (
     ATTR_POSITION,
@@ -63,7 +62,7 @@ async def async_setup_entry(
         # The shade may be out of sync with the hub
         # so we force a refresh when we add it if possible
         with suppress(asyncio.TimeoutError):
-            async with async_timeout.timeout(1):
+            async with asyncio.timeout(1):
                 await shade.refresh()
         coordinator.data.update_shade_position(shade.id, shade.current_position)
         room_name = getattr(pv_entry.room_data.get(shade.room_id), ATTR_NAME, "")

@@ -1,4 +1,5 @@
 """The Hunter Douglas PowerView integration."""
+import asyncio
 import logging
 
 from aiopvapi.helpers.aiorequest import AioRequest
@@ -7,7 +8,7 @@ from aiopvapi.resources.model import PowerviewData
 from aiopvapi.rooms import Rooms
 from aiopvapi.scenes import Scenes
 from aiopvapi.shades import Shades
-import async_timeout
+from aiopvapi.userdata import UserData
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_API_VERSION, CONF_HOST, Platform
@@ -52,7 +53,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
 
     try:
-        async with async_timeout.timeout(10):
+        async with asyncio.timeout(10):
             hub = Hub(pv_request)
             await hub.query_firmware()
             device_info = await async_get_device_info(hub)
@@ -65,15 +66,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 new_data[CONF_API_VERSION] = hub.api_version
                 hass.config_entries.async_update_entry(entry, data=new_data)
 
-        async with async_timeout.timeout(10):
+        async with asyncio.timeout(10):
             rooms = Rooms(pv_request)
             room_data: PowerviewData = await rooms.get_rooms()
 
-        async with async_timeout.timeout(10):
+        async with asyncio.timeout(10):
             scenes = Scenes(pv_request)
             scene_data: PowerviewData = await scenes.get_scenes()
 
-        async with async_timeout.timeout(10):
+        async with asyncio.timeout(10):
             shades = Shades(pv_request)
             shade_data: PowerviewData = await shades.get_shades()
 

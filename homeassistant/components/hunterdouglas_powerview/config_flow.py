@@ -1,11 +1,11 @@
 """Config flow for Hunter Douglas PowerView integration."""
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from aiopvapi.helpers.aiorequest import AioRequest
 from aiopvapi.hub import Hub
-import async_timeout
 import voluptuous as vol
 
 from homeassistant import config_entries, core, exceptions
@@ -35,7 +35,7 @@ async def validate_input(hass: core.HomeAssistant, hub_address: str) -> dict[str
     pv_request = AioRequest(hub_address, loop=hass.loop, websession=websession)
 
     try:
-        async with async_timeout.timeout(10):
+        async with asyncio.timeout(10):
             hub = Hub(pv_request)
             await hub.query_firmware()
             device_info = await async_get_device_info(hub)

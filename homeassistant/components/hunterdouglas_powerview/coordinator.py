@@ -1,13 +1,13 @@
 """Coordinate data for powerview devices."""
 from __future__ import annotations
 
+import asyncio
 from datetime import timedelta
 import logging
 
 from aiopvapi.helpers.aiorequest import PvApiMaintenance
 from aiopvapi.hub import Hub
 from aiopvapi.shades import Shades
-import async_timeout
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -35,7 +35,7 @@ class PowerviewShadeUpdateCoordinator(DataUpdateCoordinator[PowerviewShadeData])
     async def _async_update_data(self) -> PowerviewShadeData:
         """Fetch data from shade endpoint."""
 
-        async with async_timeout.timeout(10):
+        async with asyncio.timeout(10):
             try:
                 shade_entries = await self.shades.get_shades()
             except PvApiMaintenance as error:
