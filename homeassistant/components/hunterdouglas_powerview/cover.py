@@ -17,7 +17,7 @@ from aiopvapi.helpers.constants import (
     MIN_POSITION,
     MOTION_STOP,
 )
-from aiopvapi.resources.shade import BaseShade, factory as PvShade
+from aiopvapi.resources.shade import BaseShade, ShadePosition
 
 from homeassistant.components.cover import (
     ATTR_POSITION,
@@ -305,7 +305,7 @@ class PowerViewShadeBase(ShadeEntity, CoverEntity):
             return
         # suppress timeouts caused by hub nightly reboot
         with suppress(asyncio.TimeoutError):
-            async with async_timeout.timeout(5):
+            async with asyncio.timeout(5):
                 await self._shade.refresh()
         _LOGGER.debug("Process update %s: %s", self.name, self._shade.current_position)
         self._async_update_shade_data(self._shade.current_position)

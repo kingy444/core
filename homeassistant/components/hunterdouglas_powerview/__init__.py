@@ -8,7 +8,6 @@ from aiopvapi.resources.model import PowerviewData
 from aiopvapi.rooms import Rooms
 from aiopvapi.scenes import Scenes
 from aiopvapi.shades import Shades
-from aiopvapi.userdata import UserData
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_API_VERSION, CONF_HOST, Platform
