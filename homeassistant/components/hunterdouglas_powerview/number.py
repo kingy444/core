@@ -31,9 +31,7 @@ class PowerviewNumberDescriptionMixin:
     """Mixin to describe a Number entity."""
 
     create_entity_fn: Callable[[BaseShade], bool]
-    store_value_fn: Callable[
-        [PowerviewShadeUpdateCoordinator, int, float | None], float | None
-    ]
+    store_value_fn: Callable[[PowerviewShadeUpdateCoordinator, int, float | None], None]
 
 
 @dataclass
@@ -45,6 +43,15 @@ class PowerviewNumberDescription(
     entity_category: EntityCategory = EntityCategory.CONFIG
 
 
+def store_velocity(
+    coordinator: PowerviewShadeUpdateCoordinator,
+    shade_id: int,
+    value: float | None,
+) -> None:
+    """Store the desired shade velocity in the co-ordinator."""
+    coordinator.data.update_shade_velocity(shade_id, ShadePosition(velocity=value))
+
+
 NUMBERS: Final = [
     PowerviewNumberDescription(
         key="velocity",
@@ -52,9 +59,7 @@ NUMBERS: Final = [
         mode=NumberMode.SLIDER,
         icon="mdi:speedometer",
         create_entity_fn=lambda shade: shade.is_supported(MOTION_VELOCITY),
-        store_value_fn=lambda coordinator, shade_id, value: coordinator.data.update_shade_velocity(
-            shade_id, ShadePosition(velocity=value)
-        ),
+        store_value_fn=store_velocity,
     ),
 ]
 

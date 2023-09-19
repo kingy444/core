@@ -45,6 +45,16 @@ class PowerviewSensorDescription(
     state_class = SensorStateClass.MEASUREMENT
 
 
+def get_signal_device_class(shade: BaseShade) -> SensorDeviceClass | None:
+    """Get the signal value based on version of API."""
+    return SensorDeviceClass.SIGNAL_STRENGTH if shade.api_version >= 3 else None
+
+
+def get_signal_native_unit(shade: BaseShade) -> str:
+    """Get the unit of measurement for signal based on version of API."""
+    return SIGNAL_STRENGTH_DECIBELS if shade.api_version >= 3 else PERCENTAGE
+
+
 SENSORS: Final = [
     PowerviewSensorDescription(
         key="charge",
@@ -58,12 +68,8 @@ SENSORS: Final = [
         key="signal",
         translation_key="signal_strength",
         icon="mdi:signal",
-        device_class_fn=lambda shade: SensorDeviceClass.SIGNAL_STRENGTH
-        if shade.api_version >= 3
-        else None,
-        native_unit_fn=lambda shade: SIGNAL_STRENGTH_DECIBELS
-        if shade.api_version >= 3
-        else PERCENTAGE,
+        device_class_fn=get_signal_device_class,
+        native_unit_fn=get_signal_native_unit,
         native_value_fn=lambda shade: shade.get_signal_strength(),
         create_entity_fn=lambda shade: shade.has_signal_strength(),
         update_fn=lambda shade: shade.refresh(),
