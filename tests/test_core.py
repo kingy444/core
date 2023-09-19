@@ -15,6 +15,7 @@ from typing import Any
 from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
 import pytest
+from pytest_unordered import unordered
 import voluptuous as vol
 
 from homeassistant.const import (
@@ -670,11 +671,11 @@ def test_state_as_dict_json() -> None:
         '"last_changed":"1984-12-08T12:00:00","last_updated":"1984-12-08T12:00:00",'
         '"context":{"id":"01H0D6K3RFJAYAV2093ZW30PCW","parent_id":null,"user_id":null}}'
     )
-    as_dict_json_1 = state.as_dict_json()
+    as_dict_json_1 = state.as_dict_json
     assert as_dict_json_1 == expected
     # 2nd time to verify cache
-    assert state.as_dict_json() == expected
-    assert state.as_dict_json() is as_dict_json_1
+    assert state.as_dict_json == expected
+    assert state.as_dict_json is as_dict_json_1
 
 
 def test_state_as_compressed_state() -> None:
@@ -693,12 +694,12 @@ def test_state_as_compressed_state() -> None:
         "lc": last_time.timestamp(),
         "s": "on",
     }
-    as_compressed_state = state.as_compressed_state()
+    as_compressed_state = state.as_compressed_state
     # We are not too concerned about these being ReadOnlyDict
     # since we don't expect them to be called by external callers
     assert as_compressed_state == expected
     # 2nd time to verify cache
-    assert state.as_compressed_state() == expected
+    assert state.as_compressed_state == expected
 
 
 def test_state_as_compressed_state_unique_last_updated() -> None:
@@ -719,12 +720,12 @@ def test_state_as_compressed_state_unique_last_updated() -> None:
         "lu": last_updated.timestamp(),
         "s": "on",
     }
-    as_compressed_state = state.as_compressed_state()
+    as_compressed_state = state.as_compressed_state
     # We are not too concerned about these being ReadOnlyDict
     # since we don't expect them to be called by external callers
     assert as_compressed_state == expected
     # 2nd time to verify cache
-    assert state.as_compressed_state() == expected
+    assert state.as_compressed_state == expected
 
 
 def test_state_as_compressed_state_json() -> None:
@@ -739,13 +740,13 @@ def test_state_as_compressed_state_json() -> None:
         context=ha.Context(id="01H0D6H5K3SZJ3XGDHED1TJ79N"),
     )
     expected = '"happy.happy":{"s":"on","a":{"pig":"dog"},"c":"01H0D6H5K3SZJ3XGDHED1TJ79N","lc":471355200.0}'
-    as_compressed_state = state.as_compressed_state_json()
+    as_compressed_state = state.as_compressed_state_json
     # We are not too concerned about these being ReadOnlyDict
     # since we don't expect them to be called by external callers
     assert as_compressed_state == expected
     # 2nd time to verify cache
-    assert state.as_compressed_state_json() == expected
-    assert state.as_compressed_state_json() is as_compressed_state
+    assert state.as_compressed_state_json == expected
+    assert state.as_compressed_state_json is as_compressed_state
 
 
 async def test_eventbus_add_remove_listener(hass: HomeAssistant) -> None:
@@ -1031,17 +1032,18 @@ async def test_statemachine_is_state(hass: HomeAssistant) -> None:
 
 
 async def test_statemachine_entity_ids(hass: HomeAssistant) -> None:
-    """Test get_entity_ids method."""
+    """Test async_entity_ids method."""
+    assert hass.states.async_entity_ids() == []
+    assert hass.states.async_entity_ids("light") == []
+    assert hass.states.async_entity_ids(("light", "switch", "other")) == []
+
     hass.states.async_set("light.bowl", "on", {})
     hass.states.async_set("SWITCH.AC", "off", {})
-    ent_ids = hass.states.async_entity_ids()
-    assert len(ent_ids) == 2
-    assert "light.bowl" in ent_ids
-    assert "switch.ac" in ent_ids
-
-    ent_ids = hass.states.async_entity_ids("light")
-    assert len(ent_ids) == 1
-    assert "light.bowl" in ent_ids
+    assert hass.states.async_entity_ids() == unordered(["light.bowl", "switch.ac"])
+    assert hass.states.async_entity_ids("light") == ["light.bowl"]
+    assert hass.states.async_entity_ids(("light", "switch", "other")) == unordered(
+        ["light.bowl", "switch.ac"]
+    )
 
     states = sorted(state.entity_id for state in hass.states.async_all())
     assert states == ["light.bowl", "switch.ac"]
@@ -1428,7 +1430,7 @@ async def test_serviceregistry_return_response_optional(
 async def test_config_defaults() -> None:
     """Test config defaults."""
     hass = Mock()
-    config = ha.Config(hass)
+    config = ha.Config(hass, "/test/ha-config")
     assert config.hass is hass
     assert config.latitude == 0
     assert config.longitude == 0
@@ -1442,7 +1444,7 @@ async def test_config_defaults() -> None:
     assert config.skip_pip_packages == []
     assert config.components == set()
     assert config.api is None
-    assert config.config_dir is None
+    assert config.config_dir == "/test/ha-config"
     assert config.allowlist_external_dirs == set()
     assert config.allowlist_external_urls == set()
     assert config.media_dirs == {}
@@ -1455,22 +1457,19 @@ async def test_config_defaults() -> None:
 
 async def test_config_path_with_file() -> None:
     """Test get_config_path method."""
-    config = ha.Config(None)
-    config.config_dir = "/test/ha-config"
+    config = ha.Config(None, "/test/ha-config")
     assert config.path("test.conf") == "/test/ha-config/test.conf"
 
 
 async def test_config_path_with_dir_and_file() -> None:
     """Test get_config_path method."""
-    config = ha.Config(None)
-    config.config_dir = "/test/ha-config"
+    config = ha.Config(None, "/test/ha-config")
     assert config.path("dir", "test.conf") == "/test/ha-config/dir/test.conf"
 
 
 async def test_config_as_dict() -> None:
     """Test as dict."""
-    config = ha.Config(None)
-    config.config_dir = "/test/ha-config"
+    config = ha.Config(None, "/test/ha-config")
     config.hass = MagicMock()
     type(config.hass.state).value = PropertyMock(return_value="RUNNING")
     expected = {
@@ -1501,7 +1500,7 @@ async def test_config_as_dict() -> None:
 
 async def test_config_is_allowed_path() -> None:
     """Test is_allowed_path method."""
-    config = ha.Config(None)
+    config = ha.Config(None, "/test/ha-config")
     with TemporaryDirectory() as tmp_dir:
         # The created dir is in /tmp. This is a symlink on OS X
         # causing this test to fail unless we resolve path first.
@@ -1533,7 +1532,7 @@ async def test_config_is_allowed_path() -> None:
 
 async def test_config_is_allowed_external_url() -> None:
     """Test is_allowed_external_url method."""
-    config = ha.Config(None)
+    config = ha.Config(None, "/test/ha-config")
     config.allowlist_external_urls = [
         "http://x.com/",
         "https://y.com/bla/",
@@ -1584,7 +1583,7 @@ async def test_start_taking_too_long(
     event_loop, caplog: pytest.LogCaptureFixture
 ) -> None:
     """Test when async_start takes too long."""
-    hass = ha.HomeAssistant()
+    hass = ha.HomeAssistant("/test/ha-config")
     caplog.set_level(logging.WARNING)
     hass.async_create_task(asyncio.sleep(0))
 
@@ -1751,7 +1750,7 @@ async def test_additional_data_in_core_config(
     hass: HomeAssistant, hass_storage: dict[str, Any]
 ) -> None:
     """Test that we can handle additional data in core configuration."""
-    config = ha.Config(hass)
+    config = ha.Config(hass, "/test/ha-config")
     hass_storage[ha.CORE_STORAGE_KEY] = {
         "version": 1,
         "data": {"location_name": "Test Name", "additional_valid_key": "value"},
@@ -1764,7 +1763,7 @@ async def test_incorrect_internal_external_url(
     hass: HomeAssistant, hass_storage: dict[str, Any], caplog: pytest.LogCaptureFixture
 ) -> None:
     """Test that we warn when detecting invalid internal/external url."""
-    config = ha.Config(hass)
+    config = ha.Config(hass, "/test/ha-config")
 
     hass_storage[ha.CORE_STORAGE_KEY] = {
         "version": 1,
@@ -1777,7 +1776,7 @@ async def test_incorrect_internal_external_url(
     assert "Invalid external_url set" not in caplog.text
     assert "Invalid internal_url set" not in caplog.text
 
-    config = ha.Config(hass)
+    config = ha.Config(hass, "/test/ha-config")
 
     hass_storage[ha.CORE_STORAGE_KEY] = {
         "version": 1,
@@ -1905,6 +1904,9 @@ async def test_chained_logging_misses_log_timeout(
 
 async def test_async_all(hass: HomeAssistant) -> None:
     """Test async_all."""
+    assert hass.states.async_all() == []
+    assert hass.states.async_all("light") == []
+    assert hass.states.async_all(["light", "switch"]) == []
 
     hass.states.async_set("switch.link", "on")
     hass.states.async_set("light.bowl", "on")
@@ -1929,6 +1931,10 @@ async def test_async_all(hass: HomeAssistant) -> None:
 async def test_async_entity_ids_count(hass: HomeAssistant) -> None:
     """Test async_entity_ids_count."""
 
+    assert hass.states.async_entity_ids_count() == 0
+    assert hass.states.async_entity_ids_count("light") == 0
+    assert hass.states.async_entity_ids_count({"light", "vacuum"}) == 0
+
     hass.states.async_set("switch.link", "on")
     hass.states.async_set("light.bowl", "on")
     hass.states.async_set("light.frog", "on")
@@ -1941,6 +1947,7 @@ async def test_async_entity_ids_count(hass: HomeAssistant) -> None:
 
     assert hass.states.async_entity_ids_count() == 5
     assert hass.states.async_entity_ids_count("light") == 3
+    assert hass.states.async_entity_ids_count({"light", "vacuum"}) == 4
 
 
 async def test_hassjob_forbid_coroutine() -> None:
@@ -2467,3 +2474,10 @@ async def test_cancellable_hassjob(hass: HomeAssistant) -> None:
 
     # Cleanup
     timer2.cancel()
+
+
+async def test_validate_state(hass: HomeAssistant) -> None:
+    """Test validate_state."""
+    assert ha.validate_state("test") == "test"
+    with pytest.raises(InvalidStateError):
+        ha.validate_state("t" * 256)
