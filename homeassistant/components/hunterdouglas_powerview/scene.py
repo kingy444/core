@@ -14,9 +14,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_call_later
 
 from .const import DOMAIN, STATE_ATTRIBUTE_ROOM_NAME
-from .coordinator import PowerviewShadeUpdateCoordinator
 from .entity import HDEntity
-from .model import PowerviewDeviceInfo, PowerviewEntryData
+from .model import PowerviewEntryData
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -42,32 +41,15 @@ async def async_setup_entry(
 class PowerViewScene(HDEntity, Scene):
     """Representation of a Powerview scene."""
 
-    def __init__(
-        self,
-        coordinator: PowerviewShadeUpdateCoordinator,
-        device_info: PowerviewDeviceInfo,
-        room_name: str,
-        scene: PvScene,
-    ) -> None:
+    _attr_icon = "mdi:blinds"
+
+    def __init__(self, coordinator, device_info, room_name, scene) -> None:
         """Initialize the scene."""
         super().__init__(coordinator, device_info, room_name, scene.id)
         self._scene: PvScene = scene
+        self._attr_name = scene.name
+        self._attr_extra_state_attributes = {STATE_ATTRIBUTE_ROOM_NAME: room_name}
         self._forced_resync: list = []
-
-    @property
-    def name(self) -> str:
-        """Return the name of the scene."""
-        return self._scene.name
-
-    @property
-    def extra_state_attributes(self) -> dict[str, str]:
-        """Return the state attributes."""
-        return {STATE_ATTRIBUTE_ROOM_NAME: self._room_name}
-
-    @property
-    def icon(self) -> str:
-        """Icon to use in the frontend."""
-        return "mdi:blinds"
 
     async def _async_force_resync(self, *_: Any) -> None:
         """Force a resync after an update since the hub may have stale state."""
