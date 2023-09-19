@@ -14,8 +14,9 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_call_later
 
 from .const import DOMAIN, STATE_ATTRIBUTE_ROOM_NAME
+from .coordinator import PowerviewShadeUpdateCoordinator
 from .entity import HDEntity
-from .model import PowerviewEntryData
+from .model import PowerviewDeviceInfo, PowerviewEntryData
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -43,7 +44,13 @@ class PowerViewScene(HDEntity, Scene):
 
     _attr_icon = "mdi:blinds"
 
-    def __init__(self, coordinator, device_info, room_name, scene) -> None:
+    def __init__(
+        self,
+        coordinator: PowerviewShadeUpdateCoordinator,
+        device_info: PowerviewDeviceInfo,
+        room_name: str,
+        scene: PvScene,
+    ) -> None:
         """Initialize the scene."""
         super().__init__(coordinator, device_info, room_name, scene.id)
         self._scene: PvScene = scene
