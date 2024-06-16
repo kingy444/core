@@ -23,6 +23,11 @@
     }
   },
   "entity": {
+    "binary_sensor": {
+      "filter_dirty": {
+        "name": "Filter"
+      }
+    },
     "sensor": {
       "inside_temperature": {
         "name": "Inside temperature"

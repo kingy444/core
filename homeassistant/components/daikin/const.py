@@ -6,6 +6,8 @@ ATTR_TARGET_TEMPERATURE = "target_temperature"
 ATTR_INSIDE_TEMPERATURE = "inside_temperature"
 ATTR_OUTSIDE_TEMPERATURE = "outside_temperature"
 
+ATTR_FILTER_DIRTY = "filter_dirty"
+
 ATTR_TARGET_HUMIDITY = "target_humidity"
 ATTR_HUMIDITY = "humidity"
 
